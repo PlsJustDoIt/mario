@@ -138,7 +138,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
         /**
          * Affichage de l'entitÃ©.
-         * @param {2DContext} ctx le contexte de dessin (issu du canvas)
+         * @param {CanvasRenderingContext2D} ctx le contexte de dessin (issu du canvas)
          * @param {string} color la couleur du dessin
          */
         render(ctx, color) {
@@ -200,9 +200,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const canvas = document.getElementById("cvs");
 
-    const context = canvas.getContext("2d");
 
- 
+    if (canvas instanceof HTMLCanvasElement) {
+        const context = canvas?.getContext("2d");
+    }
 
     canvas.width = width * ratio;
     canvas.height = height * ratio;
