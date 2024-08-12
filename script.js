@@ -1,20 +1,25 @@
+"use strict";
 document.addEventListener('DOMContentLoaded', function () {
-    var canvas = document.getElementById('cvs');
+    const canvas = document.getElementById('cvs');
     canvas.style.backgroundColor = '#00F8';
-    var ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d');
     if (!ctx) {
         throw new Error('2d context not supported');
     }
-    var ratio = window.devicePixelRatio;
+    const ratio = window.devicePixelRatio;
     canvas.width = window.innerWidth * ratio;
     canvas.height = window.innerHeight * ratio;
     ctx.scale(ratio, ratio);
-    var gravity = 0.3;
+    const gravity = 0.3;
     // ctx.globalCompositeOperation = 'destination-over'
     // ctx.fillStyle = "blue";
     // console.log(ctx.fillRect(0, 0, canvas.width, canvas.height));
-    var Player = /** @class */ (function () {
-        function Player() {
+    class Player {
+        position;
+        width;
+        height;
+        velocity;
+        constructor() {
             this.position = {
                 x: 100,
                 y: 100
@@ -26,15 +31,15 @@ document.addEventListener('DOMContentLoaded', function () {
             this.width = 20;
             this.height = 40;
         }
-        Player.prototype.draw = function () {
+        draw() {
             if (ctx != null) {
                 ctx.fillStyle = "red";
                 ctx.fillRect(this.position.x, this.position.y, this.width, this.height);
                 ctx.fillStyle = "lightgreen";
-                console.log(ctx.fillRect(0, canvas.height - 300, canvas.width, 300));
+                ctx.fillRect(0, canvas.height - 300, canvas.width, 300);
             }
-        };
-        Player.prototype.update = function () {
+        }
+        update() {
             this.draw();
             this.position.x += this.velocity.x;
             this.position.y += this.velocity.y;
@@ -57,30 +62,49 @@ document.addEventListener('DOMContentLoaded', function () {
             if (this.position.x < 0) {
                 this.velocity.x = 0;
             }
-        };
-        Player.prototype.jump = function () {
+        }
+        jump() {
             //prevent from jumping mid air
             if (this.position.y + this.height >= canvas.height - 300) {
                 console.log(('ggg'));
                 this.velocity.y = -8;
             }
-        };
-        Player.prototype.goLeft = function () {
+        }
+        goLeft() {
             //prevent from going out of the screen
             if (this.position.x > 0) {
                 this.velocity.x = -5;
             }
-        };
-        Player.prototype.goRight = function () {
+        }
+        goRight() {
             //prevent from going out of the screen
             if (this.position.x < canvas.width - this.width) {
                 this.velocity.x = 5;
             }
-        };
-        return Player;
-    }());
-    var player = new Player();
-    var keys = {
+        }
+    }
+    class Platform {
+        position;
+        width;
+        height;
+        constructor(x, y) {
+            this.position = {
+                x: x,
+                y: y
+            };
+            this.width = 200;
+            this.height = 20;
+        }
+        draw() {
+            if (ctx != null) {
+                ctx.fillStyle = "#64ab54";
+                ctx.fillRect(this.position.x, this.position.y, this.width, this.height);
+            }
+        }
+    }
+    const player = new Player();
+    const platform = new Platform(500, canvas.height - 350);
+    const keys = {
         right: {
             pressed: false
         },
@@ -92,9 +116,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
     player.draw();
+    platform.draw();
     function animate() {
         if (ctx != null) {
             requestAnimationFrame(animate);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            player.update();
+            platform.draw();
             if (keys.right.pressed == true) {
                 console.log('right is pressed');
                 player.goRight();
@@ -109,8 +137,12 @@ document.addEventListener('DOMContentLoaded', function () {
             if (keys.space.pressed) {
                 player.jump();
             }
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            player.update();
+            // && player.position.x + player.width >= platform.position.x && player.position.x <= platform.position.x + platform.width
+            // && player.position.x + player.width >= platform.position.x && player.position.x <= platform.position.x + platform.width
+            //  && player.position.x <= platform.position.x + platform.width
+            if (player.position.y + player.height <= platform.position.y && player.position.y + player.height + player.velocity.y >= platform.position.y && player.position.x + player.width >= platform.position.x && player.position.x <= platform.position.x + platform.width) {
+                player.velocity.y = 0;
+            }
         }
     }
     window.addEventListener("keydown", function (e) {

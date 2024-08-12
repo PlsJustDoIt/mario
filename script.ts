@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 ctx.fillStyle = "red";
                 ctx.fillRect(this.position.x, this.position.y, this.width, this.height);
                 ctx.fillStyle = "lightgreen";
-                console.log(ctx.fillRect(0,canvas.height-300,canvas.width,300));
+                ctx.fillRect(0,canvas.height-300,canvas.width,300);
             }
         }
 
@@ -114,94 +114,125 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    class Platform {
+        position: { x: number; y: number; };
+        width: number;
+        height: number;
+
+        constructor(x: number, y: number) {
+            this.position = {
+                x: x,
+                y: y
+            };
+            this.width = 200;
+            this.height = 20;
+        }
+
+        draw() {
+            if (ctx != null) {
+                ctx.fillStyle = "#64ab54";
+                ctx.fillRect(this.position.x, this.position.y, this.width, this.height);
+            }
+        }
+    }
+
     
 
-        const player = new Player();
-        const keys = {
-            right: {
-                pressed: false
-            },
-            left: {
-                pressed: false
-            },
-            space: {
-                pressed: false
+    const player = new Player();
+    const platform = new Platform(500, canvas.height-350);
+    const keys = {
+        right: {
+            pressed: false
+        },
+        left: {
+            pressed: false
+        },
+        space: {
+            pressed: false
+        }
+
+    }
+    player.draw();
+    platform.draw();
+
+    
+    
+    function animate() {
+        if (ctx != null) {
+            requestAnimationFrame(animate);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            player.update();
+            platform.draw();
+            if (keys.right.pressed == true) {
+                console.log('right is pressed');
+                player.goRight();
+            } else {
+                console.log('right is not pressed');
+                player.velocity.x = 0;
             }
 
-        }
-        player.draw();
+            if (keys.left.pressed) {
+                player.goLeft();
+            }
 
-       
+            if (keys.space.pressed) {
+                player.jump();
+            }
+            // && player.position.x + player.width >= platform.position.x && player.position.x <= platform.position.x + platform.width
+            // && player.position.x + player.width >= platform.position.x && player.position.x <= platform.position.x + platform.width
+            //  && player.position.x <= platform.position.x + platform.width
+            if (player.position.y + player.height <= platform.position.y && player.position.y + player.height + player.velocity.y >= platform.position.y && player.position.x + player.width >= platform.position.x && player.position.x <= platform.position.x + platform.width) {
+                player.velocity.y = 0;
+            }
+
+
         
-        function animate() {
-            if (ctx != null) {
-                requestAnimationFrame(animate);
+        }
+    }
+
+    window.addEventListener("keydown", function(e) {
+
+
+        switch (e.key) {
+            case " ":
+                keys.space.pressed = true;
+                break;
+            case "d":
+            case "ArrowRight":
+                keys.right.pressed = true;
+                break;
+            case "q":
+            case "ArrowLeft":
+                keys.left.pressed = true;
+                break;
+
+            
+        }
+
+    });
+
+    window.addEventListener("keyup", function(e) {
+        switch (e.key) {
+            case "d":
+            case "ArrowRight":
+                keys.right.pressed = false;
+                break;
+            case "q":
+            case "ArrowLeft":
+                keys.left.pressed = false;
+                break;
+
+            case " ":
+                keys.space.pressed = false;
+                break;
                 
-                if (keys.right.pressed == true) {
-                    console.log('right is pressed');
-                    player.goRight();
-                } else {
-                    console.log('right is not pressed');
-                    player.velocity.x = 0;
-                }
-
-                if (keys.left.pressed) {
-                    player.goLeft();
-                }
-
-                if (keys.space.pressed) {
-                    player.jump();
-                }
-
-
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                player.update();
-            }
         }
+    });
 
-        window.addEventListener("keydown", function(e) {
-
-
-            switch (e.key) {
-                case " ":
-                    keys.space.pressed = true;
-                    break;
-                case "d":
-                case "ArrowRight":
-                    keys.right.pressed = true;
-                    break;
-                case "q":
-                case "ArrowLeft":
-                    keys.left.pressed = true;
-                    break;
-
-             
-            }
-
-        });
-
-        window.addEventListener("keyup", function(e) {
-            switch (e.key) {
-                case "d":
-                case "ArrowRight":
-                    keys.right.pressed = false;
-                    break;
-                case "q":
-                case "ArrowLeft":
-                    keys.left.pressed = false;
-                    break;
-
-                case " ":
-                    keys.space.pressed = false;
-                    break;
-                    
-            }
-        });
-
-        
+    
 
 
 
-        animate();
+    animate();
 
 });

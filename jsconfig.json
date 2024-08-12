@@ -1,7 +1,7 @@
 {
     "compilerOptions": {
-      "module": "CommonJS",
-      "target": "ES6"
+      "module": "ES2022",
+      "target": "ES2023"
     },
     "exclude": ["node_modules", "**/node_modules/*"]
   }
