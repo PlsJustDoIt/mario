@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', function () {
         width;
         height;
         velocity;
+        isRunning;
         constructor() {
             this.position = {
                 x: 100,
@@ -30,6 +31,7 @@ document.addEventListener('DOMContentLoaded', function () {
             };
             this.width = 20;
             this.height = 40;
+            this.isRunning = false;
         }
         draw() {
             if (ctx != null) {
@@ -66,9 +68,16 @@ document.addEventListener('DOMContentLoaded', function () {
         jump() {
             //prevent from jumping mid air
             if (this.position.y + this.height >= canvas.height - 300) {
-                console.log(('ggg'));
                 this.velocity.y = -8;
+                // audio.addEventListener('canplay', e => {
+                //     console.log('canplay');
+                //     audio.play();
+                //   });
+                audio.play();
             }
+        }
+        run() {
+            this.velocity.x *= 1.5;
         }
         goLeft() {
             //prevent from going out of the screen
@@ -102,6 +111,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     }
+    const audio = new Audio('assets/yahoo_effect.mp3');
+    console.log(audio);
     const player = new Player();
     const platform = new Platform(500, canvas.height - 350);
     const keys = {
@@ -112,6 +123,9 @@ document.addEventListener('DOMContentLoaded', function () {
             pressed: false
         },
         space: {
+            pressed: false
+        },
+        shift: {
             pressed: false
         }
     };
@@ -137,6 +151,9 @@ document.addEventListener('DOMContentLoaded', function () {
             if (keys.space.pressed) {
                 player.jump();
             }
+            if (keys.shift.pressed) {
+                player.run();
+            }
             // && player.position.x + player.width >= platform.position.x && player.position.x <= platform.position.x + platform.width
             // && player.position.x + player.width >= platform.position.x && player.position.x <= platform.position.x + platform.width
             //  && player.position.x <= platform.position.x + platform.width
@@ -158,6 +175,9 @@ document.addEventListener('DOMContentLoaded', function () {
             case "ArrowLeft":
                 keys.left.pressed = true;
                 break;
+            case "Shift":
+                keys.shift.pressed = true;
+                break;
         }
     });
     window.addEventListener("keyup", function (e) {
@@ -172,6 +192,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 break;
             case " ":
                 keys.space.pressed = false;
+                break;
+            case "Shift":
+                keys.shift.pressed = false;
                 break;
         }
     });
