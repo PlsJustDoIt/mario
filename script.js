@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
     canvas.width = window.innerWidth * ratio;
     canvas.height = window.innerHeight * ratio;
     ctx.scale(ratio, ratio);
+    ctx.font = "96px Arial";
     const gravity = 0.3;
     // ctx.globalCompositeOperation = 'destination-over'
     // ctx.fillStyle = "blue";
@@ -37,8 +38,12 @@ document.addEventListener('DOMContentLoaded', function () {
             if (ctx != null) {
                 ctx.fillStyle = "red";
                 ctx.fillRect(this.position.x, this.position.y, this.width, this.height);
-                ctx.fillStyle = "lightgreen";
-                ctx.fillRect(0, canvas.height - 300, canvas.width, 300);
+            }
+        }
+        collisionDetection(platform) {
+            if (player.position.y + player.height <= platform.position.y && player.position.y + player.height + player.velocity.y >= platform.position.y && player.position.x + player.width >= platform.position.x && player.position.x <= platform.position.x + platform.width) {
+                player.velocity.y = 0;
+                console.log('blocker collision');
             }
         }
         update() {
@@ -64,10 +69,19 @@ document.addEventListener('DOMContentLoaded', function () {
             if (this.position.x < 0) {
                 this.velocity.x = 0;
             }
+            for (let platform of platforms) {
+                this.collisionDetection(platform);
+            }
+            if (this.position.x + this.width >= canvas.width - 300 && this.position.y + this.height >= canvas.height - 300) {
+                audioWin.play();
+                console.log('you win');
+                ctx?.clearRect(0, 0, canvas.width, canvas.height);
+                ctx?.fillText('You win', canvas.width / 2 - 200, 400);
+            }
         }
         jump() {
             //prevent from jumping mid air
-            if (this.position.y + this.height >= canvas.height - 300) {
+            if (this.velocity.y == 0) {
                 this.velocity.y = -8;
                 // audio.addEventListener('canplay', e => {
                 //     console.log('canplay');
@@ -112,9 +126,21 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
     const audio = new Audio('assets/yahoo_effect.mp3');
-    console.log(audio);
     const player = new Player();
-    const platform = new Platform(500, canvas.height - 350);
+    const audioWin = new Audio('assets/mario bros flagpole  Sound Effect.mp3');
+    const flag = new Image(263, 705);
+    flag.src = 'assets/flag.png';
+    console.log(flag.complete);
+    flag.onload = function () {
+        console.log('object loaded');
+        ctx?.drawImage(flag, 500, canvas.width - 300, 132, 352);
+    };
+    // const obstacle = new Platform;
+    const platforms = [];
+    for (let i = 0; i < 5; i++) {
+        platforms.push(new Platform(400 + 200 * i + 50, canvas.height - 350 - 50 * i));
+    }
+    //const platform = new Platform(500, canvas.height-350);
     const keys = {
         right: {
             pressed: false
@@ -130,13 +156,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
     player.draw();
-    platform.draw();
+    for (let platform of platforms) {
+        platform.draw();
+    }
     function animate() {
         if (ctx != null) {
             requestAnimationFrame(animate);
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            player.update();
-            platform.draw();
             if (keys.right.pressed == true) {
                 console.log('right is pressed');
                 player.goRight();
@@ -157,9 +182,14 @@ document.addEventListener('DOMContentLoaded', function () {
             // && player.position.x + player.width >= platform.position.x && player.position.x <= platform.position.x + platform.width
             // && player.position.x + player.width >= platform.position.x && player.position.x <= platform.position.x + platform.width
             //  && player.position.x <= platform.position.x + platform.width
-            if (player.position.y + player.height <= platform.position.y && player.position.y + player.height + player.velocity.y >= platform.position.y && player.position.x + player.width >= platform.position.x && player.position.x <= platform.position.x + platform.width) {
-                player.velocity.y = 0;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            player.update();
+            for (let platform of platforms) {
+                platform.draw();
             }
+            ctx?.drawImage(flag, canvas.width - 300, 310, 132, 352);
+            ctx.fillStyle = "lightgreen";
+            ctx.fillRect(0, canvas.height - 300, canvas.width, 300);
         }
     }
     window.addEventListener("keydown", function (e) {
@@ -177,6 +207,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 break;
             case "Shift":
                 keys.shift.pressed = true;
+                break;
+            case 'r':
+                location.reload();
                 break;
         }
     });
