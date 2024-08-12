@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 y: 0
             };
             
-            this.width = 20;
+            this.width = 29;
             this.height = 40;
 
             this.isRunning = false;
@@ -51,8 +51,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         draw() {
             if (ctx != null ) {
-                ctx.fillStyle = "red";
-                ctx.fillRect(this.position.x, this.position.y, this.width, this.height);
+
+                // ctx.fillStyle = "red";
+                // ctx.fillRect(this.position.x, this.position.y, this.width, this.height);
+                ctx?.drawImage(mario,this.position.x, this.position.y, this.width, this.height);
+
             }
         }
 
@@ -154,14 +157,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 x: x,
                 y: y
             };
-            this.width = 200;
-            this.height = 20;
+            this.width = 135;
+            this.height = 83;
         }
 
         draw() {
             if (ctx != null) {
-                ctx.fillStyle = "#64ab54";
-                ctx.fillRect(this.position.x, this.position.y, this.width, this.height);
+                // ctx.fillStyle = "#64ab54";
+                // ctx.fillRect(this.position.x, this.position.y, this.width, this.height);
+                ctx?.drawImage(platform,this.position.x, this.position.y, this.width, this.height);
+                // ctx.fillStyle = "black";
+                // ctx.strokeRect(this.position.x, this.position.y, this.width, this.height);
             }
         }
     }
@@ -170,6 +176,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const audio:HTMLAudioElement = new Audio('assets/yahoo_effect.mp3');
     const player:Player = new Player();
     const audioWin:HTMLAudioElement = new Audio('assets/mario bros flagpole  Sound Effect.mp3');
+    const mario = new Image(29,40);
+    mario.src = 'assets/mario.png';
+    const platform = new Image(135,83);
+    platform.src = 'assets/platform.png';
+
 
 
 
@@ -179,7 +190,7 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log(flag.complete);
     flag.onload = function() {
         console.log('object loaded');
-        ctx?.drawImage(flag, 500, canvas.width-300,132,352);
+        ctx?.drawImage(flag, canvas.width - 300, 270, 132, 352);
     }
 
    // const obstacle = new Platform;
@@ -188,7 +199,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const platforms: Platform[] = [];
     for (let i = 0; i < 5; i++) {
-        platforms.push(new Platform(400 + 200*i + 50,canvas.height-350 - 50*i)); 
+        platforms.push(new Platform(400 + 200*i + 50,canvas.height-400 - 50*i)); 
     }
     //const platform = new Platform(500, canvas.height-350);
     const keys = {
@@ -245,7 +256,7 @@ document.addEventListener('DOMContentLoaded', function() {
             for (let platform of platforms) {
                 platform.draw();
             }
-            ctx?.drawImage(flag, canvas.width-300, 310,132,352);
+            ctx?.drawImage(flag, canvas.width - 300, 315, 132, 352);
             ctx.fillStyle = "lightgreen";
             ctx.fillRect(0,canvas.height-300,canvas.width,300);
 
