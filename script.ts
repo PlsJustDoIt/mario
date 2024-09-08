@@ -1,5 +1,6 @@
 
 
+
 document.addEventListener('DOMContentLoaded', function() {
 
     const canvas: HTMLCanvasElement = document.getElementById('cvs') as HTMLCanvasElement;
@@ -96,7 +97,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             }
 
-            for (let platform of platforms) {
+            for (const platform of platforms) {
                 this.collisionDetection(platform);
             }
 
@@ -172,6 +173,35 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    const gamepads: Record<number, Gamepad> = {};
+
+    function gamepadHandler(event:GamepadEvent, connecting:boolean) {
+        const gamepad:Gamepad = event.gamepad;
+        // Note :
+        // gamepad === navigator.getGamepads()[gamepad.index]
+
+        if (connecting) {
+            gamepads[gamepad.index] = gamepad;
+        } else {
+            delete gamepads[gamepad.index];
+        }
+    }
+
+    window.addEventListener(
+        "gamepadconnected",
+        function (e:GamepadEvent) {
+          gamepadHandler(e, true);
+        },
+        false,
+      );
+      window.addEventListener(
+        "gamepaddisconnected",
+        function (e:GamepadEvent) {
+          gamepadHandler(e, false);
+        },
+        false,
+      );
+
     
     const audio:HTMLAudioElement = new Audio('assets/yahoo_effect.mp3');
     const player:Player = new Player();
@@ -190,7 +220,7 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log(flag.complete);
     flag.onload = function() {
         console.log('object loaded');
-        ctx?.drawImage(flag, canvas.width - 300, 270, 132, 352);
+        ctx?.drawImage(flag, canvas.width - 300, canvas.height-200, 132, 352);
     }
 
    // const obstacle = new Platform;
@@ -226,13 +256,45 @@ document.addEventListener('DOMContentLoaded', function() {
     function animate() {
         if (ctx != null) {
             requestAnimationFrame(animate);
+
+             // Check for gamepad input
+            const gamepad = navigator.getGamepads()[0];
+            if (gamepad) {
+                const joystickThreshold = 0.2;
+                const joystickX = gamepad.axes[0];
+                const buttonA = gamepad.buttons[0].pressed;
+                const buttonB = gamepad.buttons[1].pressed;
+
+                const dpadRight = gamepad.buttons[15].pressed;
+                const dpadLeft = gamepad.buttons[14].pressed;
+
+                //add dpad support
+
+             
+
+                if (joystickX < -joystickThreshold || dpadLeft)  {
+                    player.goLeft();
+                } else if (joystickX > joystickThreshold || dpadRight)  {
+                    player.goRight();
+                } else {
+                    player.velocity.x = 0;
+                }
+
+                if (buttonA) {
+                    player.jump();
+                }
+
+                if (buttonB) {
+                    player.run();
+                }
+            }
            
             if (keys.right.pressed == true) {
                 console.log('right is pressed');
                 player.goRight();
             } else {
                 console.log('right is not pressed');
-                player.velocity.x = 0;
+                //player.velocity.x = 0;
             }
 
             if (keys.left.pressed) {
@@ -258,7 +320,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             ctx?.drawImage(flag, canvas.width - 300, 315, 132, 352);
             ctx.fillStyle = "lightgreen";
-            ctx.fillRect(0,canvas.height-300,canvas.width,300);
+            ctx.fillRect(0,canvas.height-canvas.height/3.5,canvas.width,300);
 
         
 
