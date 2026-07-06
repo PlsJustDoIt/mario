@@ -1,32 +1,50 @@
+"use strict";
 document.addEventListener('DOMContentLoaded', function () {
-    var canvas = document.getElementById('cvs');
+    const canvas = document.getElementById('cvs');
     canvas.style.backgroundColor = '#00F8';
-    var ctx = canvas.getContext('2d');
-    var gravity = 0.825;
+    const ctx = canvas.getContext('2d');
+    const gravity = 0.825;
     if (!ctx) {
         throw new Error('2d context not supported');
     }
+    // Logical (CSS pixel) dimensions used by the whole game logic.
+    // The canvas buffer is scaled by devicePixelRatio for crisp rendering,
+    // but everything below reasons in these logical units.
+    let viewWidth = window.innerWidth;
+    let viewHeight = window.innerHeight;
+    // Ground level: top of the green floor.
+    function groundLevel() {
+        return viewHeight - viewHeight / 3.5;
+    }
     function resizeCanvas(ctx) {
-        var ratio = window.devicePixelRatio || 1;
-        console.log("ratio : ", ratio);
-        // Ajuster la taille du canvas pour correspondre à la taille de la fenêtre
-        canvas.width = window.innerWidth * ratio;
-        canvas.height = window.innerHeight * ratio;
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.scale(ratio, ratio);
+        const ratio = window.devicePixelRatio || 1;
+        viewWidth = window.innerWidth;
+        viewHeight = window.innerHeight;
+        // Buffer size in device pixels so the rendering stays sharp on HiDPI screens.
+        canvas.width = viewWidth * ratio;
+        canvas.height = viewHeight * ratio;
+        // CSS size in logical pixels so the canvas exactly fills the window
+        // instead of overflowing by a factor of `ratio`.
+        canvas.style.width = viewWidth + 'px';
+        canvas.style.height = viewHeight + 'px';
+        // Draw using logical pixel coordinates. setTransform resets any previous
+        // scaling, so repeated resizes never compound the scale factor.
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     }
     resizeCanvas(ctx);
-    console.log(canvas.height - canvas.height / 3.5);
     // Redimensionner le canvas à chaque fois que la fenêtre change de taille
-    window.addEventListener('resize', function () {
+    window.addEventListener('resize', () => {
         resizeCanvas(ctx);
     });
     ctx.font = "96px Arial";
-    // ctx.globalCompositeOperation = 'destination-over'
-    // ctx.fillStyle = "blue";
-    // console.log(ctx.fillRect(0, 0, canvas.width, canvas.height));
-    var Player = /** @class */ (function () {
-        function Player() {
+    let gameWon = false;
+    class Player {
+        position;
+        width;
+        height;
+        velocity;
+        isRunning;
+        constructor() {
             this.position = {
                 x: 100,
                 y: 100
@@ -39,95 +57,82 @@ document.addEventListener('DOMContentLoaded', function () {
             this.height = 40;
             this.isRunning = false;
         }
-        Player.prototype.draw = function () {
+        draw() {
             if (ctx != null) {
-                // ctx.fillStyle = "red";
-                // ctx.fillRect(this.position.x, this.position.y, this.width, this.height);
-                ctx === null || ctx === void 0 ? void 0 : ctx.drawImage(mario, this.position.x, this.position.y, this.width, this.height);
+                ctx.drawImage(mario, this.position.x, this.position.y, this.width, this.height);
             }
-        };
-        Player.prototype.collisionDetection = function (platform) {
+        }
+        collisionDetection(platform) {
             if (this.position.y + this.height <= platform.position.y &&
                 this.position.y + this.height + this.velocity.y >= platform.position.y &&
                 this.position.x + this.width >= platform.position.x &&
                 this.position.x <= platform.position.x + platform.width) {
                 this.velocity.y = 0;
-                console.log('blocker collision');
             }
-        };
-        Player.prototype.update = function () {
-            this.draw();
+        }
+        update() {
             this.position.x += this.velocity.x;
             this.position.y += this.velocity.y;
-            // if (this.velocity.x >= 0.5) {
-            //     this.velocity.x-=0.5;
-            // }
-            // if (this.velocity.y >=0.5) {
-            //     this.velocity.y-=0.5;
-            // }
-            // ptn c'est le truc qui fait rester au sol, mais c'est pas bon ca 
-            if (this.position.y + this.height + this.velocity.y <= canvas.height - canvas.height / 3.5) {
+            // Rester au sol : appliquer la gravité tant qu'on est au-dessus du sol.
+            if (this.position.y + this.height + this.velocity.y <= groundLevel()) {
                 this.velocity.y += gravity;
-                //console.log('totot');
             }
             else {
                 this.velocity.y = 0;
             }
             // prevent from going right too far
-            if (this.position.x + this.width >= canvas.width) {
+            if (this.position.x + this.width >= viewWidth) {
                 this.velocity.x = 0;
             }
             // prevent from going left too far
             if (this.position.x < 0) {
                 this.velocity.x = 0;
             }
-            for (var _i = 0, platforms_2 = platforms; _i < platforms_2.length; _i++) {
-                var platform_1 = platforms_2[_i];
-                this.collisionDetection(platform_1);
+            for (const platform of platforms) {
+                this.collisionDetection(platform);
             }
-            if (this.position.x + this.width >= canvas.width - 300 && this.position.y + this.height >= canvas.height - 300) {
+            if (!gameWon &&
+                this.position.x + this.width >= viewWidth - 300 &&
+                this.position.y + this.height >= viewHeight - 300) {
+                gameWon = true;
                 audioWin.play();
-                console.log('you win');
-                ctx === null || ctx === void 0 ? void 0 : ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx === null || ctx === void 0 ? void 0 : ctx.fillText('You win', canvas.width / 2 - 200, 400);
             }
-        };
-        Player.prototype.jump = function () {
+        }
+        jump() {
             //prevent from jumping mid air
             if (this.velocity.y == 0) {
                 this.velocity.y = -18;
                 audio.play();
             }
-        };
-        Player.prototype.run = function () {
+        }
+        run() {
             if (keys.right.pressed || keys.left.pressed) {
                 this.velocity.x *= 1.5;
             }
             else {
                 this.velocity.x = 0;
             }
-        };
-        Player.prototype.goLeft = function () {
+        }
+        goLeft() {
             //prevent from going out of the screen
             if (this.position.x > 0) {
                 this.velocity.x = -13.75;
             }
-        };
-        Player.prototype.goRight = function () {
+        }
+        goRight() {
             //prevent from going out of the screen
-            if (this.position.x < canvas.width - this.width) {
+            if (this.position.x < viewWidth - this.width) {
                 this.velocity.x = 13.75;
             }
-        };
-        return Player;
-    }());
-    var Coin = /** @class */ (function () {
-        function Coin() {
         }
-        return Coin;
-    }());
-    var Platform = /** @class */ (function () {
-        function Platform(x, y) {
+    }
+    class Coin {
+    }
+    class Platform {
+        position;
+        width;
+        height;
+        constructor(x, y) {
             this.position = {
                 x: x,
                 y: y
@@ -135,20 +140,15 @@ document.addEventListener('DOMContentLoaded', function () {
             this.width = 130;
             this.height = 78;
         }
-        Platform.prototype.draw = function () {
+        draw() {
             if (ctx != null) {
-                // ctx.fillStyle = "#64ab54";
-                ctx === null || ctx === void 0 ? void 0 : ctx.drawImage(platform, this.position.x, this.position.y, this.width, this.height);
-                // ctx.fillStyle = "black";
-                // // ctx.strokeRect(this.position.x + 2, this.position.y + 4, this.width - 10, this.height - 10);   ctx.fillStyle = "orange";
-                // ctx.strokeRect(this.position.x, this.position.y, this.width, this.height);
+                ctx.drawImage(platform, this.position.x, this.position.y, this.width, this.height);
             }
-        };
-        return Platform;
-    }());
-    var gamepads = {};
+        }
+    }
+    const gamepads = {};
     function gamepadHandler(event, connecting) {
-        var gamepad = event.gamepad;
+        const gamepad = event.gamepad;
         // Note :
         // gamepad === navigator.getGamepads()[gamepad.index]
         if (connecting) {
@@ -164,23 +164,23 @@ document.addEventListener('DOMContentLoaded', function () {
     window.addEventListener("gamepaddisconnected", function (e) {
         gamepadHandler(e, false);
     }, false);
-    var audio = new Audio('assets/yahoo_effect.mp3');
-    var player = new Player();
-    var audioWin = new Audio('assets/mario bros flagpole  Sound Effect.mp3');
-    var mario = new Image(29, 40);
+    const audio = new Audio('assets/yahoo_effect.mp3');
+    const player = new Player();
+    const audioWin = new Audio('assets/mario bros flagpole  Sound Effect.mp3');
+    const mario = new Image(29, 40);
     mario.src = 'assets/mario.png';
-    var platform = new Image(130, 78);
+    const platform = new Image(130, 78);
     platform.src = 'assets/platform.png';
-    var coin = new Image(30, 30);
-    var flag = new Image(263, 705);
+    const coin = new Image(30, 30);
+    const flag = new Image(263, 705);
     flag.src = 'assets/flag.png';
     // const obstacle = new Platform;
-    var platforms = [];
-    for (var i = 0; i < 5; i++) {
-        platforms.push(new Platform(400 + 200 * i + 50, canvas.height - 400 - 50 * i));
+    const platforms = [];
+    for (let i = 0; i < 5; i++) {
+        platforms.push(new Platform(400 + 200 * i + 50, viewHeight - 400 - 50 * i));
     }
     //const platform = new Platform(500, canvas.height-350);
-    var keys = {
+    const keys = {
         right: {
             pressed: false
         },
@@ -194,91 +194,97 @@ document.addEventListener('DOMContentLoaded', function () {
             pressed: false
         }
     };
-    player.draw();
-    for (var _i = 0, platforms_1 = platforms; _i < platforms_1.length; _i++) {
-        var platform_2 = platforms_1[_i];
-        platform_2.draw();
-    }
-    var desiredFPS = 60;
-    var frameDuration = 1000 / desiredFPS;
-    var lastFrameTime = 0;
-    var frames = 0;
-    function animate(currentTime) {
-        if (currentTime === void 0) { currentTime = 0; }
-        if (ctx != null) {
-            requestAnimationFrame(animate);
-            console.log(player.velocity.y);
-            // Check for gamepad input
-            var gamepad = navigator.getGamepads()[0];
-            if (gamepad) {
-                var joystickThreshold = 0.2;
-                var joystickX = gamepad.axes[0];
-                var buttonA = gamepad.buttons[0].pressed;
-                var buttonB = gamepad.buttons[1].pressed;
-                var dpadRight = gamepad.buttons[15].pressed;
-                var dpadLeft = gamepad.buttons[14].pressed;
-                //add dpad support
-                if (joystickX < -joystickThreshold || dpadLeft) {
-                    player.goLeft();
-                }
-                else if (joystickX > joystickThreshold || dpadRight) {
-                    player.goRight();
-                }
-                else {
-                    player.velocity.x = 0;
-                }
-                if (buttonA) {
-                    player.jump();
-                }
-                if (buttonB) {
-                    player.run();
-                }
-            }
-            if (keys.left.pressed) {
+    // Poll keyboard/gamepad state and translate it into player intents.
+    function processInput() {
+        const gamepad = navigator.getGamepads()[0];
+        if (gamepad) {
+            const joystickThreshold = 0.2;
+            const joystickX = gamepad.axes[0];
+            const buttonA = gamepad.buttons[0].pressed;
+            const buttonB = gamepad.buttons[1].pressed;
+            const dpadRight = gamepad.buttons[15].pressed;
+            const dpadLeft = gamepad.buttons[14].pressed;
+            if (joystickX < -joystickThreshold || dpadLeft) {
                 player.goLeft();
             }
-            else if (keys.right.pressed) {
+            else if (joystickX > joystickThreshold || dpadRight) {
                 player.goRight();
             }
             else {
                 player.velocity.x = 0;
             }
-            // if (keys.left.pressed) {
-            //     player.goLeft();
-            // } else if (keys.right.pressed) {
-            //     player.goRight();
-            // } else {
-            //     player.velocity.x = 0;
-            // }
-            if (keys.space.pressed) {
+            if (buttonA) {
                 player.jump();
             }
-            if (keys.shift.pressed) {
+            if (buttonB) {
                 player.run();
             }
-            // && player.position.x + player.width >= platform.position.x && player.position.x <= platform.position.x + platform.width
-            // && player.position.x + player.width >= platform.position.x && player.position.x <= platform.position.x + platform.width
-            //  && player.position.x <= platform.position.x + platform.width
-            var delta = currentTime - lastFrameTime;
-            if (delta < frameDuration) {
-                return;
-            }
-            var excessTime = delta % frameDuration;
-            frames++;
-            lastFrameTime = currentTime - excessTime;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            player.update();
-            for (var _i = 0, platforms_3 = platforms; _i < platforms_3.length; _i++) {
-                var platform_3 = platforms_3[_i];
-                platform_3.draw();
-            }
-            for (var i = 0; i < 5; ++i) {
-                ctx.strokeRect(400 + 200 * i + 50, canvas.height - 600 - 50 * i, 30, 30);
-            }
-            ctx === null || ctx === void 0 ? void 0 : ctx.drawImage(flag, canvas.width - 300, (canvas.height - canvas.height / 3.5) - 352, 132, 352);
-            ctx.fillStyle = "lightgreen";
-            ctx.fillRect(0, canvas.height - canvas.height / 3.5, canvas.width, 300);
         }
+        if (keys.left.pressed) {
+            player.goLeft();
+        }
+        else if (keys.right.pressed) {
+            player.goRight();
+        }
+        else {
+            player.velocity.x = 0;
+        }
+        if (keys.space.pressed) {
+            player.jump();
+        }
+        if (keys.shift.pressed) {
+            player.run();
+        }
+    }
+    // Draw the current game state. Called once per animation frame.
+    function render() {
+        if (ctx == null) {
+            return;
+        }
+        ctx.clearRect(0, 0, viewWidth, viewHeight);
+        if (gameWon) {
+            ctx.fillStyle = "black";
+            ctx.fillText('You win', viewWidth / 2 - 200, viewHeight / 2);
+            return;
+        }
+        player.draw();
+        for (const platform of platforms) {
+            platform.draw();
+        }
+        for (let i = 0; i < 5; ++i) {
+            ctx.strokeRect(400 + 200 * i + 50, viewHeight - 600 - 50 * i, 30, 30);
+        }
+        ctx.drawImage(flag, viewWidth - 300, groundLevel() - 352, 132, 352);
+        ctx.fillStyle = "lightgreen";
+        ctx.fillRect(0, groundLevel(), viewWidth, 300);
+    }
+    // Fixed physics step (in ms). The simulation always advances in 1/60 s
+    // increments regardless of the display's refresh rate, so the game runs
+    // at the same speed on 60, 120 or 144 Hz monitors.
+    const timestep = 1000 / 60;
+    let previousTime = performance.now();
+    let accumulator = 0;
+    function animate(currentTime = performance.now()) {
+        requestAnimationFrame(animate);
+        if (ctx == null) {
+            return;
+        }
+        let frameTime = currentTime - previousTime;
+        previousTime = currentTime;
+        // Clamp large gaps (e.g. after the tab was in the background) to avoid
+        // the "spiral of death" where too many physics steps queue up at once.
+        if (frameTime > 250) {
+            frameTime = 250;
+        }
+        accumulator += frameTime;
+        while (accumulator >= timestep) {
+            if (!gameWon) {
+                processInput();
+                player.update();
+            }
+            accumulator -= timestep;
+        }
+        render();
     }
     window.addEventListener("keydown", function (e) {
         switch (e.key) {
@@ -319,8 +325,5 @@ document.addEventListener('DOMContentLoaded', function () {
                 break;
         }
     });
-    setInterval(function () {
-        console.log(frames % 60);
-    }, 1000);
     animate();
 });

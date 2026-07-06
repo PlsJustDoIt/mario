@@ -1,6 +1,5 @@
 
 
-
 document.addEventListener('DOMContentLoaded', function() {
 
     const canvas: HTMLCanvasElement = document.getElementById('cvs') as HTMLCanvasElement;
@@ -13,41 +12,47 @@ document.addEventListener('DOMContentLoaded', function() {
         throw new Error('2d context not supported');
     }
 
-    function resizeCanvas(ctx:CanvasRenderingContext2D) {
-        
+    // Logical (CSS pixel) dimensions used by the whole game logic.
+    // The canvas buffer is scaled by devicePixelRatio for crisp rendering,
+    // but everything below reasons in these logical units.
+    let viewWidth = window.innerWidth;
+    let viewHeight = window.innerHeight;
+
+    // Ground level: top of the green floor.
+    function groundLevel(): number {
+        return viewHeight - viewHeight / 3.5;
+    }
+
+    function resizeCanvas(ctx: CanvasRenderingContext2D) {
+
         const ratio = window.devicePixelRatio || 1;
 
-        console.log("ratio : ",ratio);
-        
-        // Ajuster la taille du canvas pour correspondre à la taille de la fenêtre
-        canvas.width = window.innerWidth * ratio;
-        canvas.height = window.innerHeight * ratio;
-        
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        viewWidth = window.innerWidth;
+        viewHeight = window.innerHeight;
 
+        // Buffer size in device pixels so the rendering stays sharp on HiDPI screens.
+        canvas.width = viewWidth * ratio;
+        canvas.height = viewHeight * ratio;
 
-        ctx.scale(ratio, ratio);
-    
+        // CSS size in logical pixels so the canvas exactly fills the window
+        // instead of overflowing by a factor of `ratio`.
+        canvas.style.width = viewWidth + 'px';
+        canvas.style.height = viewHeight + 'px';
 
+        // Draw using logical pixel coordinates. setTransform resets any previous
+        // scaling, so repeated resizes never compound the scale factor.
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     }
 
     resizeCanvas(ctx);
 
-    console.log(canvas.height-canvas.height/3.5);
-
-// Redimensionner le canvas à chaque fois que la fenêtre change de taille
+    // Redimensionner le canvas à chaque fois que la fenêtre change de taille
     window.addEventListener('resize', () => {
         resizeCanvas(ctx); }
     );
     ctx.font = "96px Arial";
-    
 
-    
-
-    
-    // ctx.globalCompositeOperation = 'destination-over'
-    // ctx.fillStyle = "blue";
-    // console.log(ctx.fillRect(0, 0, canvas.width, canvas.height));
+    let gameWon = false;
 
     class Player {
         position: { x: number; y: number; };
@@ -65,7 +70,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 x: 0,
                 y: 0
             };
-            
+
             this.width = 29;
             this.height = 40;
 
@@ -75,11 +80,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         draw() {
             if (ctx != null ) {
-
-                // ctx.fillStyle = "red";
-                // ctx.fillRect(this.position.x, this.position.y, this.width, this.height);
-                ctx?.drawImage(mario,this.position.x, this.position.y, this.width, this.height);
-
+                ctx.drawImage(mario, this.position.x, this.position.y, this.width, this.height);
             }
         }
 
@@ -91,35 +92,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.position.x <= platform.position.x + platform.width
             ) {
                 this.velocity.y = 0;
-                console.log('blocker collision');
             }
         }
 
 
         update() {
-            this.draw();
             this.position.x += this.velocity.x;
             this.position.y += this.velocity.y;
-            // if (this.velocity.x >= 0.5) {
-            //     this.velocity.x-=0.5;
-            // }
 
-            // if (this.velocity.y >=0.5) {
-            //     this.velocity.y-=0.5;
-            // }
-            
-            // ptn c'est le truc qui fait rester au sol, mais c'est pas bon ca 
-            if (this.position.y + this.height + this.velocity.y <= canvas.height-canvas.height/3.5) {
+            // Rester au sol : appliquer la gravité tant qu'on est au-dessus du sol.
+            if (this.position.y + this.height + this.velocity.y <= groundLevel()) {
                 this.velocity.y += gravity;
-                //console.log('totot');
             } else {
                 this.velocity.y = 0;
             }
 
             // prevent from going right too far
-            if (this.position.x + this.width >= canvas.width) {
+            if (this.position.x + this.width >= viewWidth) {
                 this.velocity.x = 0;
-            } 
+            }
 
 
             // prevent from going left too far
@@ -132,11 +123,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.collisionDetection(platform);
             }
 
-            if (this.position.x + this.width >= canvas.width-300 && this.position.y + this.height >= canvas.height-300) {
+            if (!gameWon &&
+                this.position.x + this.width >= viewWidth - 300 &&
+                this.position.y + this.height >= viewHeight - 300) {
+                gameWon = true;
                 audioWin.play();
-                console.log('you win');
-                ctx?.clearRect(0, 0, canvas.width, canvas.height);
-                ctx?.fillText('You win', canvas.width/2 -200, 400);
             }
 
 
@@ -169,11 +160,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         }
 
-        
+
         goRight() {
 
             //prevent from going out of the screen
-            if (this.position.x < canvas.width - this.width) {
+            if (this.position.x < viewWidth - this.width) {
                 this.velocity.x = 13.75;
             }
         }
@@ -183,7 +174,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-        
+
     }
 
     class Platform {
@@ -202,11 +193,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         draw() {
             if (ctx != null) {
-                // ctx.fillStyle = "#64ab54";
-                ctx?.drawImage(platform, this.position.x, this.position.y, this.width, this.height);
-                // ctx.fillStyle = "black";
-                // // ctx.strokeRect(this.position.x + 2, this.position.y + 4, this.width - 10, this.height - 10);   ctx.fillStyle = "orange";
-                // ctx.strokeRect(this.position.x, this.position.y, this.width, this.height);
+                ctx.drawImage(platform, this.position.x, this.position.y, this.width, this.height);
             }
         }
     }
@@ -240,7 +227,7 @@ document.addEventListener('DOMContentLoaded', function() {
         false,
       );
 
-    
+
     const audio:HTMLAudioElement = new Audio('assets/yahoo_effect.mp3');
     const player:Player = new Player();
     const audioWin:HTMLAudioElement = new Audio('assets/mario bros flagpole  Sound Effect.mp3');
@@ -257,12 +244,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
    // const obstacle = new Platform;
 
-  
+
 
     const platforms: Platform[] = [];
     for (let i = 0; i < 5; i++) {
-        platforms.push(new Platform(400 + 200*i + 50,canvas.height-400 - 50*i)); 
-       
+        platforms.push(new Platform(400 + 200*i + 50, viewHeight - 400 - 50*i));
+
     }
     //const platform = new Platform(500, canvas.height-350);
     const keys = {
@@ -280,110 +267,114 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
     }
-    player.draw();
 
-    for (const platform of platforms) {
-        platform.draw();
-    }
+    // Poll keyboard/gamepad state and translate it into player intents.
+    function processInput() {
+        const gamepad = navigator.getGamepads()[0];
+        if (gamepad) {
+            const joystickThreshold = 0.2;
+            const joystickX = gamepad.axes[0];
+            const buttonA = gamepad.buttons[0].pressed;
+            const buttonB = gamepad.buttons[1].pressed;
 
-    const desiredFPS = 60;
-    const frameDuration = 1000 / desiredFPS;
-    let lastFrameTime = 0;
+            const dpadRight = gamepad.buttons[15].pressed;
+            const dpadLeft = gamepad.buttons[14].pressed;
 
-    let frames = 0;
-
-    function animate(currentTime = 0) {
-        if (ctx != null) {
-            requestAnimationFrame(animate);
-
-            console.log(player.velocity.y);
-
-             // Check for gamepad input
-            const gamepad = navigator.getGamepads()[0];
-            if (gamepad) {
-                const joystickThreshold = 0.2;
-                const joystickX = gamepad.axes[0];
-                const buttonA = gamepad.buttons[0].pressed;
-                const buttonB = gamepad.buttons[1].pressed;
-
-                const dpadRight = gamepad.buttons[15].pressed;
-                const dpadLeft = gamepad.buttons[14].pressed;
-
-                //add dpad support
-
-             
-
-                if (joystickX < -joystickThreshold || dpadLeft)  {
-                    player.goLeft();
-                } else if (joystickX > joystickThreshold || dpadRight)  {
-                    player.goRight();
-                } else {
-                    player.velocity.x = 0;
-                }
-
-                if (buttonA) {
-                    player.jump();
-                }
-
-                if (buttonB) {
-                    player.run();
-                }
-            }
-
-            if (keys.left.pressed) {
+            if (joystickX < -joystickThreshold || dpadLeft)  {
                 player.goLeft();
-            } else if (keys.right.pressed) {
+            } else if (joystickX > joystickThreshold || dpadRight)  {
                 player.goRight();
             } else {
                 player.velocity.x = 0;
             }
-           
-            // if (keys.left.pressed) {
-            //     player.goLeft();
-            // } else if (keys.right.pressed) {
-            //     player.goRight();
-            // } else {
-            //     player.velocity.x = 0;
-            // }
 
-            if (keys.space.pressed) {
+            if (buttonA) {
                 player.jump();
             }
 
-            if (keys.shift.pressed) {
+            if (buttonB) {
                 player.run();
             }
-            // && player.position.x + player.width >= platform.position.x && player.position.x <= platform.position.x + platform.width
-            // && player.position.x + player.width >= platform.position.x && player.position.x <= platform.position.x + platform.width
-            //  && player.position.x <= platform.position.x + platform.width
-           
-            const delta = currentTime - lastFrameTime;
-            if (delta < frameDuration) {
-                return;
-            }
-            const excessTime = delta % frameDuration;
-
-            frames++;
-            lastFrameTime = currentTime - excessTime;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            player.update();
-
-            for (const platform of platforms) {
-                platform.draw();
-            }
-            for (let i = 0;i<5;++i) {
-                ctx.strokeRect(400 + 200*i + 50,canvas.height-600 - 50*i,30,30);
-            }
-            ctx?.drawImage(flag, canvas.width - 300, (canvas.height-canvas.height/3.5)-352, 132, 352);
-            ctx.fillStyle = "lightgreen";
-            ctx.fillRect(0,canvas.height-canvas.height/3.5,canvas.width,300);
-
-
-            
-
-        
-
         }
+
+        if (keys.left.pressed) {
+            player.goLeft();
+        } else if (keys.right.pressed) {
+            player.goRight();
+        } else {
+            player.velocity.x = 0;
+        }
+
+        if (keys.space.pressed) {
+            player.jump();
+        }
+
+        if (keys.shift.pressed) {
+            player.run();
+        }
+    }
+
+    // Draw the current game state. Called once per animation frame.
+    function render() {
+        if (ctx == null) {
+            return;
+        }
+
+        ctx.clearRect(0, 0, viewWidth, viewHeight);
+
+        if (gameWon) {
+            ctx.fillStyle = "black";
+            ctx.fillText('You win', viewWidth / 2 - 200, viewHeight / 2);
+            return;
+        }
+
+        player.draw();
+
+        for (const platform of platforms) {
+            platform.draw();
+        }
+        for (let i = 0; i < 5; ++i) {
+            ctx.strokeRect(400 + 200*i + 50, viewHeight - 600 - 50*i, 30, 30);
+        }
+        ctx.drawImage(flag, viewWidth - 300, groundLevel() - 352, 132, 352);
+        ctx.fillStyle = "lightgreen";
+        ctx.fillRect(0, groundLevel(), viewWidth, 300);
+    }
+
+    // Fixed physics step (in ms). The simulation always advances in 1/60 s
+    // increments regardless of the display's refresh rate, so the game runs
+    // at the same speed on 60, 120 or 144 Hz monitors.
+    const timestep = 1000 / 60;
+    let previousTime = performance.now();
+    let accumulator = 0;
+
+    function animate(currentTime = performance.now()) {
+        requestAnimationFrame(animate);
+
+        if (ctx == null) {
+            return;
+        }
+
+        let frameTime = currentTime - previousTime;
+        previousTime = currentTime;
+
+        // Clamp large gaps (e.g. after the tab was in the background) to avoid
+        // the "spiral of death" where too many physics steps queue up at once.
+        if (frameTime > 250) {
+            frameTime = 250;
+        }
+
+        accumulator += frameTime;
+
+        while (accumulator >= timestep) {
+            if (!gameWon) {
+                processInput();
+                player.update();
+            }
+            accumulator -= timestep;
+        }
+
+        render();
     }
 
     window.addEventListener("keydown", function(e) {
@@ -409,7 +400,7 @@ document.addEventListener('DOMContentLoaded', function() {
             case 'r':
                 location.reload();
                 break;
-            
+
         }
 
     });
@@ -428,16 +419,12 @@ document.addEventListener('DOMContentLoaded', function() {
             case " ":
                 keys.space.pressed = false;
                 break;
-                
+
             case "Shift":
                 keys.shift.pressed = false;
                 break;
         }
     });
-
-    setInterval(() => {
-        console.log(frames%60);
-      }, 1000)
 
     animate();
 
